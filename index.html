@@ -10,11 +10,22 @@
 </head>
 
 <body>
-    <!-- <div class="col-12">
-        <h1> IA Reconhecimento Facial em tempo Real</h1>
-    </div> -->
-    <div>
+    <div class="video-container">
         <video autoplay id="cam" width="920" height="660" muted></video>
+        <canvas id="overlay"></canvas>
+    </div>
+
+    <div class="video-container2">
+        <video autoplay loop id="background-video">
+            <source src="assets/videos/example-pt.mp4" type="video/mp4">
+            Seu navegador não suporta o elemento de vídeo.
+        </video>
+
+        <video autoplay loop id="background-video" muted>
+            <source src="assets/videos/marvel.mov" type="video/mp4">
+            Seu navegador não suporta o elemento de vídeo.
+        </video>
+       
     </div>
     
     <!-- Adicionando logo de rodapé -->
@@ -22,8 +33,25 @@
         <img src="assets/daringtech.png" alt="Logo Daring Tech">
     </div>
 
+    <!-- <audio id="background-audio" loop>
+        <source src="assets/audio/music.mp3" type="audio/mp3">
+        Seu navegador não suporta o elemento de áudio.
+    </audio> -->
+
     <script src="./assets/lib/face-api/face-api.min.js"></script>
     <script src="./assets/js/index.js"></script>
 </body>
-
+<!-- <script>
+    // Garantir que o áudio comece a tocar automaticamente
+    document.addEventListener('DOMContentLoaded', function () {
+        const audio = document.getElementById('background-audio');
+        audio.play().catch(error => {
+            console.error('Reprodução automática de áudio bloqueada:', error);
+            // Tentativa de reprodução novamente após uma interação do usuário
+            audio.play();
+        }, { once: true });
+    });
+    document.body.addEventListener('click', () => {
+    });
+</script> -->
 </html>

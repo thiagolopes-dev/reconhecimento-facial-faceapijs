@@ -6,17 +6,43 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    position: relative; /* Adiciona esta linha para permitir o posicionamento absoluto da logo */
+    position: relative;
+}
+
+.video-container {
+    display: flex;
+    width: 60%;
+    height: 100%;
+    position: relative; 
+}
+
+.video-container2 {
+    display: flex;
+    flex-direction: column;
+    width: 40%;
+    height: 100%;
+    position: relative;
+}
+
+video {
+    flex: 1;
+    width: 100%;
+    height: 100%;
+    object-fit: cover; 
 }
 
 canvas {
     position: absolute;
+    top: 0;
+    left: 0;
+    width: 60%;
+    height: 100%;
 }
 
 .footer-logo {
     position: absolute;
     bottom: 20px; /* Ajuste conforme necessário */
-    right: 20px; /* Ajuste conforme necessário */
+    right: 81%; /* Ajuste conforme necessário */
     z-index: 1000; /* Para garantir que a logo fique acima de outros elementos */
 }
 

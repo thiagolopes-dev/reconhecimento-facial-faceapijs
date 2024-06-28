@@ -7,32 +7,46 @@ const startVideo = () => {
                 devices.forEach(device => {
                     if (device.kind === 'videoinput') {
                         if (device.label.includes('FaceTime')) {
-                            navigator.getUserMedia(
-                                { video: { deviceId: device.deviceId } },
-                                stream => cam.srcObject = stream,
-                                error => console.error(error)
-                            );
+                            navigator.mediaDevices.getUserMedia(
+                                { video: { deviceId: device.deviceId } }
+                            ).then(stream => cam.srcObject = stream)
+                            .catch(error => console.error(error));
                         }
                     }
                 });
             }
+            console.log(devices);
         });
 };
 
-const loadLabels = () => {
+const loadLabels = async () => {
     const labels = ['Thiago Lopes', 'Giovani'];
     return Promise.all(labels.map(async label => {
         const descriptions = [];
-        for (let i = 1; i <= 1; i++) {
-            const img = await faceapi.fetchImage(`/assets/lib/face-api/labels/${label}/${i}.jpg`);
-            const detections = await faceapi
-                .detectSingleFace(img)
-                .withFaceLandmarks()
-                .withFaceDescriptor();
-            descriptions.push(detections.descriptor);
+        // Aumente o número de imagens por pessoa para melhorar a precisão
+        for (let i = 1; i <= 5; i++) {
+            try {
+                const img = await faceapi.fetchImage(`/assets/lib/face-api/labels/${label}/${i}.jpg`);
+                const detections = await faceapi
+                    .detectSingleFace(img)
+                    .withFaceLandmarks()
+                    .withFaceDescriptor();
+                if (detections) {
+                    descriptions.push(detections.descriptor);
+                } else {
+                    console.warn(`No face detected for ${label} in image ${i}`);
+                }
+            } catch (error) {
+                console.error(`Error loading image ${i} for ${label}:`, error);
+            }
         }
-        return new faceapi.LabeledFaceDescriptors(label, descriptions);
-    }));
+        if (descriptions.length > 0) {
+            return new faceapi.LabeledFaceDescriptors(label, descriptions);
+        } else {
+            console.warn(`No valid descriptors for ${label}`);
+            return null;
+        }
+    })).then(descriptors => descriptors.filter(d => d !== null)); // Filter out null descriptors
 };
 
 Promise.all([
@@ -58,54 +72,45 @@ cam.addEventListener('play', async () => {
     faceapi.matchDimensions(canvas, canvasSize);
     document.body.appendChild(canvas);
 
-    let lastDetectionTime = Date.now();
+    // Aumente a precisão do FaceMatcher ajustando o limiar
+    const faceMatcher = new faceapi.FaceMatcher(labels, 0.6);
+    
     const detectionInterval = 100;
-    const updateInterval = 1000;
-
-    let lastDetections = [];
-    let lastResults = [];
 
     setInterval(async () => {
-        const currentTime = Date.now();
-        if (currentTime - lastDetectionTime > detectionInterval) {
-            const detections = await faceapi
-                .detectAllFaces(
-                    cam,
-                    new faceapi.TinyFaceDetectorOptions()
-                )
-                .withFaceLandmarks()
-                .withFaceExpressions()
-                .withAgeAndGender()
-                .withFaceDescriptors();
-            lastDetections = faceapi.resizeResults(detections, canvasSize);
-            const faceMatcher = new faceapi.FaceMatcher(labels, 0.9);
-            lastResults = lastDetections.map(d =>
-                faceMatcher.findBestMatch(d.descriptor)
-            );
-            lastDetectionTime = currentTime;
-        }
+        const detections = await faceapi
+            .detectAllFaces(
+                cam,
+                new faceapi.TinyFaceDetectorOptions()
+            )
+            .withFaceLandmarks()
+            .withFaceExpressions()
+            .withAgeAndGender()
+            .withFaceDescriptors();
+        
+        const resizedDetections = faceapi.resizeResults(detections, canvasSize);
+        
+        const results = resizedDetections.map(d =>
+            faceMatcher.findBestMatch(d.descriptor)
+        );
 
         canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
-        faceapi.draw.drawDetections(canvas, lastDetections);
-        faceapi.draw.drawFaceLandmarks(canvas, lastDetections);
-        faceapi.draw.drawFaceExpressions(canvas, lastDetections);
+        faceapi.draw.drawDetections(canvas, resizedDetections);
+        faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
+        faceapi.draw.drawFaceExpressions(canvas, resizedDetections);
 
-        if (currentTime - lastDetectionTime < detectionInterval) {
-            lastDetections.forEach(detection => {
-                const { age, gender, genderProbability } = detection;
+        resizedDetections.forEach((detection, i) => {
+            const { age, gender, genderProbability } = detection;
+            const box = detection.detection.box;
+            const drawBox = new faceapi.draw.DrawBox(box, { label: `${parseInt(age, 10)} anos, ${translateGender(gender)} (${parseInt(genderProbability * 100, 10)}%)` });
+            drawBox.draw(canvas);
+            
+            const result = results[i];
+            if (result.label !== 'unknown') {  // Verifique se o rótulo é 'unknown' em vez de 'Desconhecido'
                 new faceapi.draw.DrawTextField([
-                    `${parseInt(age, 10)} anos`,
-                    `${translateGender(gender)} (${parseInt(genderProbability * 100, 10)}%)`
-                ], detection.detection.box.topRight).draw(canvas);
-            });
-
-            lastResults.forEach((result, index) => {
-                const box = lastDetections[index].detection.box;
-                const { label, distance } = result;
-                new faceapi.draw.DrawTextField([
-                    `${label} (${parseInt(distance * 100, 10)}%)`
+                    `${result.label} (${parseInt(result.distance * 100, 10)}%)`
                 ], box.bottomRight).draw(canvas);
-            });
-        }
+            }
+        });
     }, detectionInterval);
 });
