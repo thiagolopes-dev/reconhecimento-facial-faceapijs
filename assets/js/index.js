@@ -1,26 +1,50 @@
 const cam = document.getElementById('cam');
 
 const startVideo = () => {
-    navigator.mediaDevices.enumerateDevices()
-        .then(devices => {
-            if (Array.isArray(devices)) {
-                devices.forEach(device => {
-                    if (device.kind === 'videoinput') {
-                        if (device.label.includes('FaceTime')) {
-                            navigator.mediaDevices.getUserMedia(
-                                { video: { deviceId: device.deviceId } }
-                            ).then(stream => cam.srcObject = stream)
-                            .catch(error => console.error(error));
-                        }
-                    }
-                });
-            }
-            console.log(devices);
+    // Solicita permissão para acessar a câmera
+    navigator.mediaDevices.getUserMedia({ video: true })
+        .then(stream => {
+            cam.srcObject = stream;
+            enumerateDevices();
+        })
+        .catch(error => {
+            console.error('Erro ao acessar a câmera:', error);
+            alert('Permissão para usar a câmera negada ou não disponível.');
         });
 };
 
+const enumerateDevices = () => {
+    navigator.mediaDevices.enumerateDevices()
+        .then(devices => {
+            const videoDevices = devices.filter(device => device.kind === 'videoinput');
+            
+            // Se houver mais de uma câmera, peça para o usuário selecionar
+            if (videoDevices.length > 1) {
+                let options = "Escolha a câmera:\n";
+                videoDevices.forEach((device, index) => {
+                    options += `${index + 1}: ${device.label}\n`;
+                });
+                const selection = prompt(options);
+                const selectedDevice = videoDevices[parseInt(selection, 10) - 1];
+                
+                if (selectedDevice) {
+                    // Usa a câmera selecionada pelo usuário
+                    navigator.mediaDevices.getUserMedia({
+                        video: { deviceId: selectedDevice.deviceId }
+                    }).then(stream => cam.srcObject = stream)
+                    .catch(error => console.error('Erro ao acessar a câmera selecionada:', error));
+                } else {
+                    alert('Seleção inválida. Usando a câmera padrão.');
+                    startVideo();
+                }
+            }
+        })
+        .catch(error => console.error('Erro ao enumerar dispositivos:', error));
+};
+
+// Função para carregar os rótulos (labels) com os nomes das pessoas
 const loadLabels = async () => {
-    const labels = ['Thiago Lopes', 'Giovani'];
+    const labels = ['Thiago Lopes', 'Micheletti', 'Argati', 'Rafael Cita', 'Da Costa', 'Michele'];
     return Promise.all(labels.map(async label => {
         const descriptions = [];
         // Aumente o número de imagens por pessoa para melhorar a precisão
@@ -49,6 +73,7 @@ const loadLabels = async () => {
     })).then(descriptors => descriptors.filter(d => d !== null)); // Filter out null descriptors
 };
 
+// Carrega os modelos do FaceAPI e inicia o vídeo
 Promise.all([
     faceapi.nets.tinyFaceDetector.loadFromUri('/assets/lib/face-api/models'),
     faceapi.nets.faceLandmark68Net.loadFromUri('/assets/lib/face-api/models'),
@@ -72,9 +97,7 @@ cam.addEventListener('play', async () => {
     faceapi.matchDimensions(canvas, canvasSize);
     document.body.appendChild(canvas);
 
-    // Aumente a precisão do FaceMatcher ajustando o limiar
     const faceMatcher = new faceapi.FaceMatcher(labels, 0.6);
-    
     const detectionInterval = 100;
 
     setInterval(async () => {
@@ -87,12 +110,9 @@ cam.addEventListener('play', async () => {
             .withFaceExpressions()
             .withAgeAndGender()
             .withFaceDescriptors();
-        
+
         const resizedDetections = faceapi.resizeResults(detections, canvasSize);
-        
-        const results = resizedDetections.map(d =>
-            faceMatcher.findBestMatch(d.descriptor)
-        );
+        const results = resizedDetections.map(d => faceMatcher.findBestMatch(d.descriptor));
 
         canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
         faceapi.draw.drawDetections(canvas, resizedDetections);
@@ -104,9 +124,9 @@ cam.addEventListener('play', async () => {
             const box = detection.detection.box;
             const drawBox = new faceapi.draw.DrawBox(box, { label: `${parseInt(age, 10)} anos, ${translateGender(gender)} (${parseInt(genderProbability * 100, 10)}%)` });
             drawBox.draw(canvas);
-            
+
             const result = results[i];
-            if (result.label !== 'unknown') {  // Verifique se o rótulo é 'unknown' em vez de 'Desconhecido'
+            if (result.label !== 'Desconhecido') {
                 new faceapi.draw.DrawTextField([
                     `${result.label} (${parseInt(result.distance * 100, 10)}%)`
                 ], box.bottomRight).draw(canvas);

@@ -16,8 +16,8 @@
     </div>
 
     <div class="video-container2">
-        <video autoplay loop id="background-video">
-            <source src="assets/videos/example-pt.mp4" type="video/mp4">
+        <video autoplay loop id="background-video" muted>
+            <source src="assets/videos/reconhecimentofacial.webm" type="video/mp4">
             Seu navegador não suporta o elemento de vídeo.
         </video>
 
@@ -33,14 +33,29 @@
         <img src="assets/daringtech.png" alt="Logo Daring Tech">
     </div>
 
-    <!-- <audio id="background-audio" loop>
+    <audio id="background-audio" loop>
         <source src="assets/audio/music.mp3" type="audio/mp3">
         Seu navegador não suporta o elemento de áudio.
-    </audio> -->
+    </audio>
 
     <script src="./assets/lib/face-api/face-api.min.js"></script>
     <script src="./assets/js/index.js"></script>
 </body>
+<script>
+    // Função para tentar reproduzir o áudio
+    function playAudio() {
+        const audio = document.getElementById('background-audio');
+        audio.play().catch(error => {
+            console.error('Reprodução automática de áudio bloqueada:', error);
+        });
+    }
+
+    // Adiciona evento de clique para iniciar o áudio
+    document.addEventListener('click', playAudio);
+
+    // Tenta reproduzir o áudio automaticamente ao carregar o DOM
+    document.addEventListener('DOMContentLoaded', playAudio);
+</script>
 <!-- <script>
     // Garantir que o áudio comece a tocar automaticamente
     document.addEventListener('DOMContentLoaded', function () {
